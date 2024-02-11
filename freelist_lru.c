@@ -24,32 +24,92 @@
 #define INT_ACCESS_ONCE(var)	((int)(*((volatile int *)&(var))))
 
 /*********************************************/
-
-typedef struct {
-	struct node* prev;
-	struct node* next;
-	int frame_id;
+// CS3223 - Data Structure declarations
+typedef struct node {
+ struct node* prev;
+ struct node* next;
+ int frame_id;
 } node;
 
-typedef struct {
-	struct node* head;
-	struct node* tail;
-	int size;
-	slock_t doubleLinkedList_spinlock;
-} DLL;
+typedef struct info {
+ struct node* head;
+ struct node* tail;
+ int size;
+ slock_t linkedListInfo_spinlock;
+} info;
 
-static DLL doubleLinkedList;
+static node* doubleLinkedList = NULL; //Make Global Declare it in InitializeStructure
+static info* linkedListInfo = NULL;
+node* search_for_frame(int desired_frame_id);
+void delete_arbitrarily(int frame_id_for_deletion);
+void insert_at_head(node* frame);
+void move_to_head(node* frame);
 
-void insert_at_head();
+/*********************************************/
+// CS3223 - Function definitions
 
-void delete_arbitarily(node* frame_id);
+// Traverse through linkedListInfo for frame corresponding to some 'frame_id'
+node* search_for_frame(int desired_frame_id) {
+ node* traversal_ptr;
 
-void move_to_head(node* frame_id);
+ if (linkedListInfo->head == NULL) { // Use '.' to access members of linkedListInfo
+  //elog(ERROR, "linkedListInfo is empty");
+  return NULL; // Handle empty list case properly
+ } else {
+  traversal_ptr = linkedListInfo->head;
 
-node* get_victim();
+  while (traversal_ptr != NULL) {
+   if (traversal_ptr->frame_id == desired_frame_id) {
+    return traversal_ptr;
+   }
+   traversal_ptr = traversal_ptr->next;
+  }
+ }
+ return NULL; // Return NULL if frame_id not found
+}
 
+void delete_arbitrarily(int frame_id_for_deletion) {
+ node* frame_for_deletion = search_for_frame(frame_id_for_deletion); // Corrected function call
 
+ if (!frame_for_deletion) { // Handle case where frame is not found
+  return;
+ }
 
+ if (frame_for_deletion == linkedListInfo->head) { // Correctly check and update head
+  if (linkedListInfo->head->next) { // Check if there's a next node
+   linkedListInfo->head = linkedListInfo->head->next;
+   linkedListInfo->head->prev = NULL;
+  } else { // List becomes empty
+   linkedListInfo->head = linkedListInfo->tail = NULL;
+  }
+ } else if (frame_for_deletion == linkedListInfo->tail) { // Correctly check and update tail
+  linkedListInfo->tail = linkedListInfo->tail->prev;
+  linkedListInfo->tail->next = NULL;
+ } else { // Node is in the middle
+  frame_for_deletion->prev->next = frame_for_deletion->next;
+  frame_for_deletion->next->prev = frame_for_deletion->prev;
+ }
+
+ // Free the node if necessary
+ // free(frame_for_deletion);
+}
+
+void insert_at_head(node* frame) { 
+ frame->next = linkedListInfo->head; 
+ if (linkedListInfo->head != NULL) { // Check if list is not empty
+  linkedListInfo->head->prev = frame; 
+ }
+ linkedListInfo->head = frame; 
+ if (linkedListInfo->tail == NULL) { // If list was empty, update tail as well
+  linkedListInfo->tail = frame;
+ }
+ frame->prev = NULL; // Set frame's prev to NULL
+} 
+
+void move_to_head(node* frame) { 
+ delete_arbitrarily(frame->frame_id); // Correctly pass frame_id
+ insert_at_head(frame); 
+}
 /*********************************************/
 
 
@@ -504,6 +564,12 @@ StrategyShmemSize(void)
 	/* size of the shared replacement strategy control block */
 	size = add_size(size, MAXALIGN(sizeof(BufferStrategyControl)));
 
+	// CS3223: Allocate size for our data structures in FREE-LIST
+	size = add_size(size, sizeof(node) * (NBuffers + NUM_BUFFER_PARTITIONS));
+
+	//Size of the control information of double link list
+	size = add_size(size, sizeof(info));
+
 	return size;
 }
 
@@ -518,6 +584,10 @@ void
 StrategyInitialize(bool init)
 {
 	bool		found;
+
+	// CS3223: Boolean values for if shared memory alloc is successful
+	bool is_dll_success = false;
+	bool is_link_list_info_success = false;
 
 	/*
 	 * Initialize the shared buffer lookup hashtable.
@@ -538,6 +608,18 @@ StrategyInitialize(bool init)
 		ShmemInitStruct("Buffer Strategy Status",
 						sizeof(BufferStrategyControl),
 						&found);
+
+
+	// CS3223: Initialize space for our data structures
+	// Linked List Info
+	linkedListInfo = (info *)ShmemInitStruct("Link List Info",
+												sizeof(info),
+												&is_link_list_info_success);
+
+	// Double Linked List itself
+	doubleLinkedList = (node *)ShmemInitStruct("Double Link List",
+														sizeof(node) * (NBuffers + NUM_BUFFER_PARTITIONS),
+														&is_dll_success);
 
 	if (!found)
 	{
@@ -566,6 +648,17 @@ StrategyInitialize(bool init)
 		StrategyControl->bgwprocno = -1;
 	}
 	else
+		Assert(!init);
+
+	// CS3223: Intialize our DLL Data Structure
+	if (!is_dll_success && !is_link_list_info_success) { //Initiate our Double Link List Data Structure here
+		Assert (init);
+		SpinLockInit(&linkedListInfo->linkedListInfo_spinlock);
+
+		linkedListInfo->tail = NULL;
+		linkedListInfo->size = 0;
+		linkedListInfo->head = doubleLinkedList;
+	} else
 		Assert(!init);
 }
 
