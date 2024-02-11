@@ -440,56 +440,69 @@ StrategyGetBuffer(BufferAccessStrategy strategy, uint32 *buf_state, bool *from_r
 		}
 	}
 
-	/* Nothing on the freelist, so run the CS3223 LRU Replacement algorithm */
-	SpinLockAcquire(&linkedListInfo->linkedListInfo_spinlock);
-	node* frame = linkedListInfo->tail;
-	
+	// 1. Start from tail
+	// 2. Traverse to head, while checking for a victim (victim = pin-count = 0)
+	// 3. If victim is found, replace victim node with incoming frame
 
+	SpinLockAcquire(&linkedListInfo->linkedListInfo_spinlock);    // Acquire DLL lock
+	node* traversal_frame = linkedListInfo->tail;				  // Reset traversal to the tail
+	trycounter = NBuffers;
 
+	for (;;)
+	{
+		/*
+		 * If the buffer is pinned or has a nonzero usage_count, we cannot use
+		 * it; decrement the usage_count (unless pinned) and keep scanning.
+		 */
 
+		if (traversal_frame == NULL) {
+			// We must have traversed the entire list, or the list is empty
+			// i.e All buffers are pinned
+			traversal_frame = linkedListInfo->tail;				  // Reset traversal to the tail
+		}
 
-	// trycounter = NBuffers;
-	// for (;;)
-	// {
-	// 	buf = GetBufferDescriptor(ClockSweepTick());
+		int fetched_frame_id = traversal_frame->frame_id;
+		buf = GetBufferDescriptor(fetched_frame_id);
+		local_buf_state = LockBufHdr(buf);
 
-	// 	/*
-	// 	 * If the buffer is pinned or has a nonzero usage_count, we cannot use
-	// 	 * it; decrement the usage_count (unless pinned) and keep scanning.
-	// 	 */
-	// 	local_buf_state = LockBufHdr(buf);
+		// Check if the frame_id will be valid below...
+		if (BUF_STATE_GET_REFCOUNT(local_buf_state) == 0)
+		{
+			if (BUF_STATE_GET_USAGECOUNT(local_buf_state) != 0)
+			{
+				local_buf_state -= BUF_USAGECOUNT_ONE;
+				trycounter = NBuffers;
+			}
+			else
+			{
+				/* Found a usable buffer */
+				if (strategy != NULL) {
+					assert(true == false);
+				}
+				// AddBufferToRing(strategy, buf);
 
-	// 	if (BUF_STATE_GET_REFCOUNT(local_buf_state) == 0)
-	// 	{
-	// 		if (BUF_STATE_GET_USAGECOUNT(local_buf_state) != 0)
-	// 		{
-	// 			local_buf_state -= BUF_USAGECOUNT_ONE;
+				move_to_head(fetched_frame_id);
+				SpinLockRelease(&linkedListInfo->linkedListInfo_spinlock);
+				*buf_state = local_buf_state;
+				return buf;
+			}
+		}
+		else if (--trycounter == 0)
+		{
+			/*
+			 * We've scanned all the buffers without making any state changes,
+			 * so all the buffers are pinned (or were when we looked at them).
+			 * We could hope that someone will free one eventually, but it's
+			 * probably better to fail than to risk getting stuck in an
+			 * infinite loop.
+			 */
+			UnlockBufHdr(buf, local_buf_state);
+			elog(ERROR, "no unpinned buffers available");
 
-	// 			trycounter = NBuffers;
-	// 		}
-	// 		else
-	// 		{
-	// 			/* Found a usable buffer */
-	// 			if (strategy != NULL)
-	// 				AddBufferToRing(strategy, buf);
-	// 			*buf_state = local_buf_state;
-	// 			return buf;
-	// 		}
-	// 	}
-	// 	else if (--trycounter == 0)
-	// 	{
-	// 		/*
-	// 		 * We've scanned all the buffers without making any state changes,
-	// 		 * so all the buffers are pinned (or were when we looked at them).
-	// 		 * We could hope that someone will free one eventually, but it's
-	// 		 * probably better to fail than to risk getting stuck in an
-	// 		 * infinite loop.
-	// 		 */
-	// 		UnlockBufHdr(buf, local_buf_state);
-	// 		elog(ERROR, "no unpinned buffers available");
-	// 	}
-	// 	UnlockBufHdr(buf, local_buf_state);
-	// }
+			SpinLockRelease(&linkedListInfo->linkedListInfo_spinlock);
+		}
+		UnlockBufHdr(buf, local_buf_state);
+	}
 }
 
 /*
