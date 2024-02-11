@@ -20,6 +20,8 @@
 #include "storage/buf_internals.h"
 #include "storage/bufmgr.h"
 #include "storage/proc.h"
+#include <stdio.h>
+#include <stdlib.h>
 
 #include <assert.h>
 
@@ -111,6 +113,62 @@ void insert_at_head(node* frame) {
 void move_to_head(node* frame) { 
  delete_arbitrarily(frame->frame_id); // Correctly pass frame_id
  insert_at_head(frame); 
+}
+
+char* print_list_to_string(info* linkedListInfo) {
+    // Initial allocation for the string
+    int str_size = 256; // Initial size, may need to increase depending on list size
+    char* list_str = malloc(str_size * sizeof(char));
+    if (!list_str) {
+        // Handle memory allocation failure
+        return NULL;
+    }
+
+    list_str[0] = '\0'; // Start with an empty string
+
+    node* current = linkedListInfo->head;
+    int offset = 0; // Keep track of the number of characters written
+
+    while (current != NULL) {
+        // Check remaining buffer size and reallocate if necessary
+        if (str_size - offset < 50) { // Ensure there's at least 50 chars of space
+            str_size *= 2; // Double the buffer size
+            list_str = realloc(list_str, str_size);
+            if (!list_str) {
+                // Handle memory allocation failure
+                return NULL;
+            }
+        }
+
+        // Append current node's frame_id to the string
+        int written = snprintf(list_str + offset, str_size - offset, "Frame ID: %d -> ", current->frame_id);
+        if (written > 0) {
+            offset += written; // Increase offset by the number of characters written
+        } else {
+            // Handle snprintf error
+            free(list_str);
+            return NULL;
+        }
+
+        current = current->next;
+    }
+
+    // Optionally, remove the last arrow " -> " for aesthetics
+    if (offset > 4) {
+        list_str[offset - 4] = '\0';
+    }
+
+    return list_str; // Caller is responsible for freeing the memory
+}
+
+void log_linked_list(info* linkedListInfo) {
+    char* list_representation = print_list_to_string(linkedListInfo);
+    if (list_representation) {
+        elog(LOG, "LinkedList: %s", list_representation);
+        free(list_representation);
+    } else {
+        elog(ERROR, "Failed to allocate memory for list representation");
+    }
 }
 /*********************************************/
 
@@ -287,14 +345,17 @@ StrategyAccessBuffer(int buf_id, bool delete)
 	if (delete) {
         SpinLockAcquire(&linkedListInfo->linkedListInfo_spinlock);
 		elog(LOG, "SpinLOCK A");
+		log_linked_list(linkedListInfo);
 
         delete_arbitrarily(buf_id);
 
         SpinLockRelease(&linkedListInfo->linkedListInfo_spinlock);
 		elog(LOG, "SpinRELEASE A");
+		log_linked_list(linkedListInfo);
     } else {
 		SpinLockAcquire(&linkedListInfo->linkedListInfo_spinlock);
 		elog(LOG, "SpinLOCK B");
+		log_linked_list(linkedListInfo);
 		frame = search_for_frame(buf_id);
 
 		if (frame) {
@@ -307,6 +368,7 @@ StrategyAccessBuffer(int buf_id, bool delete)
 
 		SpinLockRelease(&linkedListInfo->linkedListInfo_spinlock);
 		elog(LOG, "SpinRELEASE B");
+		log_linked_list(linkedListInfo);
 	}
 }
 
@@ -442,15 +504,17 @@ StrategyGetBuffer(BufferAccessStrategy strategy, uint32 *buf_state, bool *from_r
 			if (BUF_STATE_GET_REFCOUNT(local_buf_state) == 0
 				&& BUF_STATE_GET_USAGECOUNT(local_buf_state) == 0)
 			{
-				if (strategy != NULL) {
-					SpinLockAcquire(&linkedListInfo->linkedListInfo_spinlock);
-				}
-					// AddBufferToRing(strategy, buf);
-					//CS3223: Add buffer to the head of the linked list
-					elog(LOG, "SpinLOCK Case 2");
-					StrategyAccessBuffer(buf->buf_id, false);                      // Case 2
-					SpinLockRelease(&linkedListInfo->linkedListInfo_spinlock);
-					elog(LOG, "SpinRELEASE Case 2");
+				
+				// SpinLockAcquire(&linkedListInfo->linkedListInfo_spinlock);
+				elog(LOG, "Case 2");
+				// log_linked_list(linkedListInfo);
+			
+				// AddBufferToRing(strategy, buf);
+				//CS3223: Add buffer to the head of the linked list
+				StrategyAccessBuffer(buf->buf_id, false);                      // Case 2
+				// SpinLockRelease(&linkedListInfo->linkedListInfo_spinlock);
+				elog(LOG, "Case 2");
+				//log_linked_list(linkedListInfo);
 				*buf_state = local_buf_state;
 				return buf;
 			}
@@ -462,6 +526,7 @@ StrategyGetBuffer(BufferAccessStrategy strategy, uint32 *buf_state, bool *from_r
 	// 2. Traverse to head, while checking for a suitable frame to evict
 	SpinLockAcquire(&linkedListInfo->linkedListInfo_spinlock);    // Acquire DLL lock
 	elog(LOG, "SpinLOCK Case 3");
+	log_linked_list(linkedListInfo);
 	traversal_frame = linkedListInfo->tail;				  // Reset traversal to the tail
 	trycounter = NBuffers;
 
@@ -495,7 +560,7 @@ StrategyGetBuffer(BufferAccessStrategy strategy, uint32 *buf_state, bool *from_r
 			{
 				/* Found a usable buffer */
 				if (strategy != NULL) {
-					assert(true == false);
+					elog(LOG, "Non-default strategy found a buffer");
 				}
 				// AddBufferToRing(strategy, buf);
 
@@ -503,6 +568,7 @@ StrategyGetBuffer(BufferAccessStrategy strategy, uint32 *buf_state, bool *from_r
 				move_to_head(fetched_frame);
 				SpinLockRelease(&linkedListInfo->linkedListInfo_spinlock);
 				elog(LOG, "SpinRELEASE Case 3 else");
+				log_linked_list(linkedListInfo);
 				*buf_state = local_buf_state;
 				return buf;
 			}
@@ -517,10 +583,10 @@ StrategyGetBuffer(BufferAccessStrategy strategy, uint32 *buf_state, bool *from_r
 			 * infinite loop.
 			 */
 			UnlockBufHdr(buf, local_buf_state);
-			elog(ERROR, "no unpinned buffers available");
-
 			SpinLockRelease(&linkedListInfo->linkedListInfo_spinlock);
 			elog(LOG, "SpinRELEASE Case 3 elseif");
+			log_linked_list(linkedListInfo);
+			elog(ERROR, "no unpinned buffers available");
 		}
 		UnlockBufHdr(buf, local_buf_state);
 	}
@@ -534,6 +600,7 @@ StrategyFreeBuffer(BufferDesc *buf)
 {
 	SpinLockAcquire(&StrategyControl->buffer_strategy_lock);
 	elog(LOG, "SpinLOCK Case 4");
+	log_linked_list(linkedListInfo);
 
 	/*
 	 * It is possible that we are told to put something in the freelist that
@@ -553,6 +620,7 @@ StrategyFreeBuffer(BufferDesc *buf)
 
 	SpinLockRelease(&StrategyControl->buffer_strategy_lock);
 	elog(LOG, "SpinRELEASE Case 4");
+	log_linked_list(linkedListInfo);
 }
 
 /*
