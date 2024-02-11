@@ -281,7 +281,25 @@ have_free_buffer(void)
 void
 StrategyAccessBuffer(int buf_id, bool delete)
 {
-	elog(ERROR, "StrategyAccessBuffer: Not implemented!");
+	if (delete) {
+        SpinLockAcquire(&linkedListInfo->linkedListInfo_spinlock);
+
+        delete_arbitrarily(buf_id);
+
+        SpinLockRelease(&linkedListInfo->linkedListInfo_spinlock);
+    } else {
+		SpinLockAcquire(&linkedListInfo->linkedListInfo_spinlock);
+
+		node* frame = search_for_frame(buf_id);
+
+		if (frame) {
+			move_to_head(frame);
+		} else {
+			elog(ERROR, "Buffer not found in linked list");
+		}
+
+		SpinLockRelease(&linkedListInfo->linkedListInfo_spinlock);
+	}
 }
 
 /*
