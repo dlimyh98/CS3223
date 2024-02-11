@@ -286,12 +286,15 @@ StrategyAccessBuffer(int buf_id, bool delete)
 	node* frame;
 	if (delete) {
         SpinLockAcquire(&linkedListInfo->linkedListInfo_spinlock);
+		elog(LOG, "SpinLOCK A");
 
         delete_arbitrarily(buf_id);
 
         SpinLockRelease(&linkedListInfo->linkedListInfo_spinlock);
+		elog(LOG, "SpinRELEASE A");
     } else {
 		SpinLockAcquire(&linkedListInfo->linkedListInfo_spinlock);
+		elog(LOG, "SpinLOCK B");
 		frame = search_for_frame(buf_id);
 
 		if (frame) {
@@ -303,6 +306,7 @@ StrategyAccessBuffer(int buf_id, bool delete)
 		}
 
 		SpinLockRelease(&linkedListInfo->linkedListInfo_spinlock);
+		elog(LOG, "SpinRELEASE B");
 	}
 }
 
@@ -408,6 +412,8 @@ StrategyGetBuffer(BufferAccessStrategy strategy, uint32 *buf_state, bool *from_r
 
 			if (StrategyControl->firstFreeBuffer < 0)
 			{
+
+
 				SpinLockRelease(&StrategyControl->buffer_strategy_lock);
 				break;
 			}
@@ -437,13 +443,14 @@ StrategyGetBuffer(BufferAccessStrategy strategy, uint32 *buf_state, bool *from_r
 				&& BUF_STATE_GET_USAGECOUNT(local_buf_state) == 0)
 			{
 				if (strategy != NULL) {
-					assert (true == false);
+					SpinLockAcquire(&linkedListInfo->linkedListInfo_spinlock);
 				}
 					// AddBufferToRing(strategy, buf);
 					//CS3223: Add buffer to the head of the linked list
-					SpinLockAcquire(&linkedListInfo->linkedListInfo_spinlock);
+					elog(LOG, "SpinLOCK Case 2");
 					StrategyAccessBuffer(buf->buf_id, false);                      // Case 2
 					SpinLockRelease(&linkedListInfo->linkedListInfo_spinlock);
+					elog(LOG, "SpinRELEASE Case 2");
 				*buf_state = local_buf_state;
 				return buf;
 			}
@@ -454,6 +461,7 @@ StrategyGetBuffer(BufferAccessStrategy strategy, uint32 *buf_state, bool *from_r
 	// 1. Start from tail
 	// 2. Traverse to head, while checking for a suitable frame to evict
 	SpinLockAcquire(&linkedListInfo->linkedListInfo_spinlock);    // Acquire DLL lock
+	elog(LOG, "SpinLOCK Case 3");
 	traversal_frame = linkedListInfo->tail;				  // Reset traversal to the tail
 	trycounter = NBuffers;
 
@@ -494,6 +502,7 @@ StrategyGetBuffer(BufferAccessStrategy strategy, uint32 *buf_state, bool *from_r
 				fetched_frame = search_for_frame(fetched_frame_id);
 				move_to_head(fetched_frame);
 				SpinLockRelease(&linkedListInfo->linkedListInfo_spinlock);
+				elog(LOG, "SpinRELEASE Case 3 else");
 				*buf_state = local_buf_state;
 				return buf;
 			}
@@ -511,6 +520,7 @@ StrategyGetBuffer(BufferAccessStrategy strategy, uint32 *buf_state, bool *from_r
 			elog(ERROR, "no unpinned buffers available");
 
 			SpinLockRelease(&linkedListInfo->linkedListInfo_spinlock);
+			elog(LOG, "SpinRELEASE Case 3 elseif");
 		}
 		UnlockBufHdr(buf, local_buf_state);
 	}
@@ -523,6 +533,7 @@ void
 StrategyFreeBuffer(BufferDesc *buf)
 {
 	SpinLockAcquire(&StrategyControl->buffer_strategy_lock);
+	elog(LOG, "SpinLOCK Case 4");
 
 	/*
 	 * It is possible that we are told to put something in the freelist that
@@ -541,6 +552,7 @@ StrategyFreeBuffer(BufferDesc *buf)
 	}
 
 	SpinLockRelease(&StrategyControl->buffer_strategy_lock);
+	elog(LOG, "SpinRELEASE Case 4");
 }
 
 /*
