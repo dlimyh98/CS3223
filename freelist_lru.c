@@ -21,6 +21,8 @@
 #include "storage/bufmgr.h"
 #include "storage/proc.h"
 
+#include <assert.h>
+
 #define INT_ACCESS_ONCE(var)	((int)(*((volatile int *)&(var))))
 
 /*********************************************/
@@ -43,7 +45,7 @@ static info* linkedListInfo = NULL;
 node* search_for_frame(int desired_frame_id);
 void delete_arbitrarily(int frame_id_for_deletion);
 void insert_at_head(node* frame);
-void move_to_head(node* frame);
+void move_to_head(node* frame);     // Case 1 - Called by StrategyAccessBuffer(..., false) in bufmgr_lru.c
 
 /*********************************************/
 // CS3223 - Function definitions
@@ -281,6 +283,7 @@ have_free_buffer(void)
 void
 StrategyAccessBuffer(int buf_id, bool delete)
 {
+	node* frame;
 	if (delete) {
         SpinLockAcquire(&linkedListInfo->linkedListInfo_spinlock);
 
@@ -289,8 +292,7 @@ StrategyAccessBuffer(int buf_id, bool delete)
         SpinLockRelease(&linkedListInfo->linkedListInfo_spinlock);
     } else {
 		SpinLockAcquire(&linkedListInfo->linkedListInfo_spinlock);
-
-		node* frame = search_for_frame(buf_id);
+		frame = search_for_frame(buf_id);
 
 		if (frame) {
 			move_to_head(frame);
@@ -324,12 +326,19 @@ StrategyGetBuffer(BufferAccessStrategy strategy, uint32 *buf_state, bool *from_r
 	int			trycounter;
 	uint32		local_buf_state;	/* to avoid repeated (de-)referencing */
 
+	// CS3223
+	node* traversal_frame;
+	int fetched_frame_id;
+	node *fetched_frame;
+
 	*from_ring = false;
 
 	/*
 	 * If given a strategy object, see whether it can select a buffer. We
 	 * assume strategy objects don't need buffer_strategy_lock.
 	 */
+
+	// CS3223 - We check the freelist first before doing anything (strictly following LRU policy)
 	// if (strategy != NULL)
 	// {
 	// 	buf = GetBufferFromRing(strategy, buf_state);
@@ -427,11 +436,13 @@ StrategyGetBuffer(BufferAccessStrategy strategy, uint32 *buf_state, bool *from_r
 			if (BUF_STATE_GET_REFCOUNT(local_buf_state) == 0
 				&& BUF_STATE_GET_USAGECOUNT(local_buf_state) == 0)
 			{
-				if (strategy != NULL)
+				if (strategy != NULL) {
+					assert (true == false);
+				}
 					// AddBufferToRing(strategy, buf);
 					//CS3223: Add buffer to the head of the linked list
 					SpinLockAcquire(&linkedListInfo->linkedListInfo_spinlock);
-					StrategyAccessBuffer(buf->buf_id, false); 
+					StrategyAccessBuffer(buf->buf_id, false);                      // Case 2
 					SpinLockRelease(&linkedListInfo->linkedListInfo_spinlock);
 				*buf_state = local_buf_state;
 				return buf;
@@ -441,13 +452,12 @@ StrategyGetBuffer(BufferAccessStrategy strategy, uint32 *buf_state, bool *from_r
 	}
 
 	// 1. Start from tail
-	// 2. Traverse to head, while checking for a victim (victim = pin-count = 0)
-	// 3. If victim is found, replace victim node with incoming frame
-
+	// 2. Traverse to head, while checking for a suitable frame to evict
 	SpinLockAcquire(&linkedListInfo->linkedListInfo_spinlock);    // Acquire DLL lock
-	node* traversal_frame = linkedListInfo->tail;				  // Reset traversal to the tail
+	traversal_frame = linkedListInfo->tail;				  // Reset traversal to the tail
 	trycounter = NBuffers;
 
+	// Case 3
 	for (;;)
 	{
 		/*
@@ -461,7 +471,7 @@ StrategyGetBuffer(BufferAccessStrategy strategy, uint32 *buf_state, bool *from_r
 			traversal_frame = linkedListInfo->tail;				  // Reset traversal to the tail
 		}
 
-		int fetched_frame_id = traversal_frame->frame_id;
+		fetched_frame_id = traversal_frame->frame_id;
 		buf = GetBufferDescriptor(fetched_frame_id);
 		local_buf_state = LockBufHdr(buf);
 
@@ -481,7 +491,8 @@ StrategyGetBuffer(BufferAccessStrategy strategy, uint32 *buf_state, bool *from_r
 				}
 				// AddBufferToRing(strategy, buf);
 
-				move_to_head(fetched_frame_id);
+				fetched_frame = search_for_frame(fetched_frame_id);
+				move_to_head(fetched_frame);
 				SpinLockRelease(&linkedListInfo->linkedListInfo_spinlock);
 				*buf_state = local_buf_state;
 				return buf;
@@ -523,6 +534,10 @@ StrategyFreeBuffer(BufferDesc *buf)
 		if (buf->freeNext < 0)
 			StrategyControl->lastFreeBuffer = buf->buf_id;
 		StrategyControl->firstFreeBuffer = buf->buf_id;
+
+
+		// Case 4
+		StrategyAccessBuffer(buf->buf_id, true);
 	}
 
 	SpinLockRelease(&StrategyControl->buffer_strategy_lock);
