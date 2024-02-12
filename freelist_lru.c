@@ -345,17 +345,17 @@ StrategyAccessBuffer(int buf_id, bool delete)
 	if (delete) {
         SpinLockAcquire(&linkedListInfo->linkedListInfo_spinlock);
 		elog(LOG, "SpinLOCK A");
-		log_linked_list(linkedListInfo);
+		//log_linked_list(linkedListInfo);
 
         delete_arbitrarily(buf_id);
 
         SpinLockRelease(&linkedListInfo->linkedListInfo_spinlock);
 		elog(LOG, "SpinRELEASE A");
-		log_linked_list(linkedListInfo);
+		//log_linked_list(linkedListInfo);
     } else {
 		SpinLockAcquire(&linkedListInfo->linkedListInfo_spinlock);
 		elog(LOG, "SpinLOCK B");
-		log_linked_list(linkedListInfo);
+		//log_linked_list(linkedListInfo);
 		frame = search_for_frame(buf_id);
 
 		if (frame) {
@@ -368,7 +368,7 @@ StrategyAccessBuffer(int buf_id, bool delete)
 
 		SpinLockRelease(&linkedListInfo->linkedListInfo_spinlock);
 		elog(LOG, "SpinRELEASE B");
-		log_linked_list(linkedListInfo);
+		//log_linked_list(linkedListInfo);
 	}
 }
 
@@ -507,14 +507,14 @@ StrategyGetBuffer(BufferAccessStrategy strategy, uint32 *buf_state, bool *from_r
 				
 				// SpinLockAcquire(&linkedListInfo->linkedListInfo_spinlock);
 				elog(LOG, "Case 2");
-				// log_linked_list(linkedListInfo);
+				// //log_linked_list(linkedListInfo);
 			
 				// AddBufferToRing(strategy, buf);
 				//CS3223: Add buffer to the head of the linked list
 				StrategyAccessBuffer(buf->buf_id, false);                      // Case 2
 				// SpinLockRelease(&linkedListInfo->linkedListInfo_spinlock);
 				elog(LOG, "Case 2");
-				//log_linked_list(linkedListInfo);
+				////log_linked_list(linkedListInfo);
 				*buf_state = local_buf_state;
 				return buf;
 			}
@@ -526,7 +526,7 @@ StrategyGetBuffer(BufferAccessStrategy strategy, uint32 *buf_state, bool *from_r
 	// 2. Traverse to head, while checking for a suitable frame to evict
 	SpinLockAcquire(&linkedListInfo->linkedListInfo_spinlock);    // Acquire DLL lock
 	elog(LOG, "SpinLOCK Case 3");
-	log_linked_list(linkedListInfo);
+	//log_linked_list(linkedListInfo);
 	traversal_frame = linkedListInfo->tail;				  // Reset traversal to the tail
 	trycounter = NBuffers;
 
@@ -542,6 +542,7 @@ StrategyGetBuffer(BufferAccessStrategy strategy, uint32 *buf_state, bool *from_r
 			// We must have traversed the entire list, or the list is empty
 			// i.e All buffers are pinned
 			traversal_frame = linkedListInfo->tail;				  // Reset traversal to the tail
+			elog(LOG, "traversal reseted");
 		}
 
 		fetched_frame_id = traversal_frame->frame_id;
@@ -551,44 +552,46 @@ StrategyGetBuffer(BufferAccessStrategy strategy, uint32 *buf_state, bool *from_r
 		// Check if the frame_id will be valid below...
 		if (BUF_STATE_GET_REFCOUNT(local_buf_state) == 0)
 		{
-			if (BUF_STATE_GET_USAGECOUNT(local_buf_state) != 0)
-			{
-				local_buf_state -= BUF_USAGECOUNT_ONE;
-				trycounter = NBuffers;
-			}
-			else
-			{
+			elog(LOG, "Entered: if (BUF_STATE_GET_REFCOUNT(local_buf_state) == 0) ");
+			// if (BUF_STATE_GET_USAGECOUNT(local_buf_state) != 0)
+			// {
+			// 	local_buf_state -= BUF_USAGECOUNT_ONE;
+			// 	trycounter = NBuffers;
+			// }
+			// else
+			//{
 				/* Found a usable buffer */
 				if (strategy != NULL) {
 					elog(LOG, "Non-default strategy found a buffer");
 				}
 				// AddBufferToRing(strategy, buf);
 
-				fetched_frame = search_for_frame(fetched_frame_id);
-				move_to_head(fetched_frame);
-				SpinLockRelease(&linkedListInfo->linkedListInfo_spinlock);
-				elog(LOG, "SpinRELEASE Case 3 else");
-				log_linked_list(linkedListInfo);
-				*buf_state = local_buf_state;
-				return buf;
-			}
-		}
-		else if (--trycounter == 0)
-		{
-			/*
-			 * We've scanned all the buffers without making any state changes,
-			 * so all the buffers are pinned (or were when we looked at them).
-			 * We could hope that someone will free one eventually, but it's
-			 * probably better to fail than to risk getting stuck in an
-			 * infinite loop.
-			 */
-			UnlockBufHdr(buf, local_buf_state);
+			fetched_frame = search_for_frame(fetched_frame_id);
+			move_to_head(fetched_frame);
 			SpinLockRelease(&linkedListInfo->linkedListInfo_spinlock);
-			elog(LOG, "SpinRELEASE Case 3 elseif");
-			log_linked_list(linkedListInfo);
-			elog(ERROR, "no unpinned buffers available");
+			elog(LOG, "SpinRELEASE Case 3 else");
+			//log_linked_list(linkedListInfo);
+			*buf_state = local_buf_state;
+			return buf;
+			//}
 		}
+		// else if (--trycounter == 0)
+		// {
+		// 	/*
+		// 	 * We've scanned all the buffers without making any state changes,
+		// 	 * so all the buffers are pinned (or were when we looked at them).
+		// 	 * We could hope that someone will free one eventually, but it's
+		// 	 * probably better to fail than to risk getting stuck in an
+		// 	 * infinite loop.
+		// 	 */
+		// 	UnlockBufHdr(buf, local_buf_state);
+		// 	SpinLockRelease(&linkedListInfo->linkedListInfo_spinlock);
+		// 	elog(LOG, "SpinRELEASE Case 3 elseif");
+		// 	//log_linked_list(linkedListInfo);
+		// 	elog(ERROR, "no unpinned buffers available");
+		// }
 		UnlockBufHdr(buf, local_buf_state);
+		traversal_frame = traversal_frame -> prev;
 	}
 }
 
@@ -600,7 +603,7 @@ StrategyFreeBuffer(BufferDesc *buf)
 {
 	SpinLockAcquire(&StrategyControl->buffer_strategy_lock);
 	elog(LOG, "SpinLOCK Case 4");
-	log_linked_list(linkedListInfo);
+	//log_linked_list(linkedListInfo);
 
 	/*
 	 * It is possible that we are told to put something in the freelist that
@@ -620,7 +623,7 @@ StrategyFreeBuffer(BufferDesc *buf)
 
 	SpinLockRelease(&StrategyControl->buffer_strategy_lock);
 	elog(LOG, "SpinRELEASE Case 4");
-	log_linked_list(linkedListInfo);
+	//log_linked_list(linkedListInfo);
 }
 
 /*
