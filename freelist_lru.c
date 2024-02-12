@@ -523,12 +523,15 @@ StrategyGetBuffer(BufferAccessStrategy strategy, uint32 *buf_state, bool *from_r
 		}
 	}
 
+
+	/**************** Nothing on the freelist, so we run the LRU algorithm below ... ****************/
 	// 1. Start from tail
 	// 2. Traverse to head, while checking for a suitable frame to evict
+
 	SpinLockAcquire(&linkedListInfo->linkedListInfo_spinlock);    // Acquire DLL lock
 	elog(LOG, "SpinLOCK Case 3");
 	//log_linked_list(linkedListInfo);
-	traversal_frame = linkedListInfo->tail;				  // Reset traversal to the tail
+	traversal_frame = linkedListInfo->tail;				          // Reset traversal to the tail
 	trycounter = NBuffers;
 
 	// Case 3
