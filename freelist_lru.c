@@ -30,16 +30,16 @@
 /*********************************************/
 // CS3223 - Data Structure declarations
 typedef struct node {
- struct node* prev;
- struct node* next;
- int frame_id;
+	struct node* prev;
+	struct node* next;
+	int frame_id;
 } node;
 
 typedef struct info {
- struct node* head;
- struct node* tail;
- int size;
- slock_t linkedListInfo_spinlock;
+	struct node* head;
+	struct node* tail;
+	int size;
+	slock_t linkedListInfo_spinlock;
 } info;
 
 static node* doubleLinkedList = NULL; //Make Global Declare it in InitializeStructure
@@ -47,72 +47,73 @@ static info* linkedListInfo = NULL;
 node* search_for_frame(int desired_frame_id);
 void delete_arbitrarily(int frame_id_for_deletion);
 void insert_at_head(node* frame);
-void move_to_head(node* frame);     // Case 1 - Called by StrategyAccessBuffer(..., false) in bufmgr_lru.c
+void move_to_head(node* frame);       // Case 1 - Called by StrategyAccessBuffer(..., false) in bufmgr_lru.c
 
 /*********************************************/
 // CS3223 - Function definitions
 
 // Traverse through linkedListInfo for frame corresponding to some 'frame_id'
 node* search_for_frame(int desired_frame_id) {
- node* traversal_ptr;
+	node* traversal_ptr;
 
- if (linkedListInfo->head == NULL) { // Use '.' to access members of linkedListInfo
-  //elog(ERROR, "linkedListInfo is empty");
-  return NULL; // Handle empty list case properly
- } else {
-  traversal_ptr = linkedListInfo->head;
+	if (linkedListInfo->head == NULL) { 
+		//elog(ERROR, "linkedListInfo is empty");
+		return NULL; // Handle empty list case properly
+	} else {
+		traversal_ptr = linkedListInfo->head;
 
-  while (traversal_ptr != NULL) {
-   if (traversal_ptr->frame_id == desired_frame_id) {
-    return traversal_ptr;
-   }
-   traversal_ptr = traversal_ptr->next;
-  }
- }
- return NULL; // Return NULL if frame_id not found
+		while (traversal_ptr != NULL) {
+			if (traversal_ptr->frame_id == desired_frame_id) {
+				return traversal_ptr;
+			}
+
+			traversal_ptr = traversal_ptr->next;
+		}
+	}
+
+	return NULL; // Return NULL if frame_id not found
 }
 
 void delete_arbitrarily(int frame_id_for_deletion) {
- node* frame_for_deletion = search_for_frame(frame_id_for_deletion); // Corrected function call
+	node* frame_for_deletion = search_for_frame(frame_id_for_deletion);
 
- if (!frame_for_deletion) { // Handle case where frame is not found
-  return;
- }
+	if (!frame_for_deletion) { // Handle case where frame is not found
+		return;
+	}
 
- if (frame_for_deletion == linkedListInfo->head) { // Correctly check and update head
-  if (linkedListInfo->head->next) { // Check if there's a next node
-   linkedListInfo->head = linkedListInfo->head->next;
-   linkedListInfo->head->prev = NULL;
-  } else { // List becomes empty
-   linkedListInfo->head = linkedListInfo->tail = NULL;
-  }
- } else if (frame_for_deletion == linkedListInfo->tail) { // Correctly check and update tail
-  linkedListInfo->tail = linkedListInfo->tail->prev;
-  linkedListInfo->tail->next = NULL;
- } else { // Node is in the middle
-  frame_for_deletion->prev->next = frame_for_deletion->next;
-  frame_for_deletion->next->prev = frame_for_deletion->prev;
- }
-
- // Free the node if necessary
- // free(frame_for_deletion);
+	if (frame_for_deletion == linkedListInfo->head) { // Correctly check and update head
+		if (linkedListInfo->head->next) { // Check if there's a next node
+			linkedListInfo->head = linkedListInfo->head->next;
+			linkedListInfo->head->prev = NULL;
+		} else { // List becomes empty
+			linkedListInfo->head = linkedListInfo->tail = NULL;
+		}
+		} else if (frame_for_deletion == linkedListInfo->tail) { // Correctly check and update tail
+			linkedListInfo->tail = linkedListInfo->tail->prev;
+			linkedListInfo->tail->next = NULL;
+		} else { // Node is in the middle
+			frame_for_deletion->prev->next = frame_for_deletion->next;
+			frame_for_deletion->next->prev = frame_for_deletion->prev;
+	}
 }
 
 void insert_at_head(node* frame) { 
- frame->next = linkedListInfo->head; 
- if (linkedListInfo->head != NULL) { // Check if list is not empty
-  linkedListInfo->head->prev = frame; 
- }
- linkedListInfo->head = frame; 
- if (linkedListInfo->tail == NULL) { // If list was empty, update tail as well
-  linkedListInfo->tail = frame;
- }
- frame->prev = NULL; // Set frame's prev to NULL
+	frame->next = linkedListInfo->head; 
+	if (linkedListInfo->head != NULL) { // Check if list is not empty
+		linkedListInfo->head->prev = frame; 
+	}
+	linkedListInfo->head = frame; 
+
+	if (linkedListInfo->tail == NULL) { // If list was empty, update tail as well
+		linkedListInfo->tail = frame;
+	}
+
+	frame->prev = NULL; // Set frame's prev to NULL
 } 
 
 void move_to_head(node* frame) { 
- delete_arbitrarily(frame->frame_id); // Correctly pass frame_id
- insert_at_head(frame); 
+	delete_arbitrarily(frame->frame_id);
+	insert_at_head(frame); 
 }
 
 char* print_list_to_string(info* linkedListInfo) {
