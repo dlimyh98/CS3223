@@ -165,7 +165,7 @@ char* print_list_to_string(info* linkedListInfo) {
 void log_linked_list(info* linkedListInfo) {
     char* list_representation = print_list_to_string(linkedListInfo);
     if (list_representation) {
-        elog(LOG, "LinkedList: %s", list_representation);
+        elog(NOTICE, "LinkedList: %s", list_representation);
         free(list_representation);
     } else {
         elog(ERROR, "Failed to allocate memory for list representation");
@@ -532,11 +532,12 @@ StrategyGetBuffer(BufferAccessStrategy strategy, uint32 *buf_state, bool *from_r
 	//elog(LOG, "SpinLOCK Case 3");
 	//log_linked_list(linkedListInfo);
 	traversal_frame = linkedListInfo->tail;				          // Reset traversal to the tail
-	trycounter = NBuffers;
+	trycounter = NBuffers;                                        // NOTE: NBuffers is 16 (as defined by Chee Yong) 
 
 	// Case 3
 	for (;;)
 	{
+
 		/*
 		 * If the buffer is pinned or has a nonzero usage_count, we cannot use
 		 * it; decrement the usage_count (unless pinned) and keep scanning.
@@ -545,13 +546,20 @@ StrategyGetBuffer(BufferAccessStrategy strategy, uint32 *buf_state, bool *from_r
 		if (traversal_frame == NULL) {
 			// We must have traversed the entire list, or the list is empty
 			// i.e All buffers are pinned
-			traversal_frame = linkedListInfo->tail;				  // Reset traversal to the tail
-			//elog(LOG, "traversal reseted");
+
+			// Thus, the result should be similar to Clock Policy (where all frames are pinned, none can be evicted)
+			// We follow their method there
+			traversal_frame = linkedListInfo->tail;				          // Reset traversal to the tail
+			SpinLockRelease(&linkedListInfo->linkedListInfo_spinlock);    // Release the DLL spinlock we acquired before for(;;)
+			elog(ERROR, "no unpinned buffers available");                 // Throw an error (and exit)
 		}
 
 		fetched_frame_id = traversal_frame->frame_id;
 		buf = GetBufferDescriptor(fetched_frame_id);
 		local_buf_state = LockBufHdr(buf);
+
+		elog(NOTICE, "fetched_frame is %d", fetched_frame_id);
+		elog(NOTICE, "RC is %d", BUF_STATE_GET_REFCOUNT(local_buf_state));
 
 		// Check if the frame_id will be valid below...
 		if (BUF_STATE_GET_REFCOUNT(local_buf_state) == 0)

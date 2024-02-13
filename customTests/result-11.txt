@@ -1,0 +1,218 @@
+NOTICE:  fetched_frame is 12
+NOTICE:  RC is 0
+NOTICE:  fetched_frame is 11
+NOTICE:  RC is 0
+NOTICE:  fetched_frame is 10
+NOTICE:  RC is 0
+NOTICE:  fetched_frame is 9
+NOTICE:  RC is 0
+NOTICE:  fetched_frame is 8
+NOTICE:  RC is 0
+NOTICE:  fetched_frame is 7
+NOTICE:  RC is 0
+NOTICE:  fetched_frame is 6
+NOTICE:  RC is 0
+NOTICE:  fetched_frame is 5
+NOTICE:  RC is 0
+NOTICE:  fetched_frame is 4
+NOTICE:  RC is 0
+NOTICE:  fetched_frame is 3
+NOTICE:  RC is 0
+NOTICE:  fetched_frame is 2
+NOTICE:  RC is 0
+NOTICE:  fetched_frame is 1
+NOTICE:  RC is 0
+NOTICE:  fetched_frame is 0
+NOTICE:  RC is 0
+NOTICE:  fetched_frame is 15
+NOTICE:  RC is 0
+NOTICE:  fetched_frame is 14
+NOTICE:  RC is 0
+NOTICE:  fetched_frame is 12
+NOTICE:  RC is 0
+NOTICE:  fetched_frame is 11
+NOTICE:  RC is 0
+NOTICE:  fetched_frame is 13
+NOTICE:  RC is 0
+NOTICE:  fetched_frame is 10
+NOTICE:  RC is 0
+NOTICE:  fetched_frame is 9
+NOTICE:  RC is 0
+NOTICE:  fetched_frame is 7
+NOTICE:  RC is 0
+NOTICE:  fetched_frame is 6
+NOTICE:  RC is 0
+NOTICE:  fetched_frame is 8
+NOTICE:  RC is 0
+NOTICE:  fetched_frame is 5
+NOTICE:  RC is 0
+NOTICE:  fetched_frame is 2
+NOTICE:  RC is 0
+NOTICE:  fetched_frame is 1
+NOTICE:  RC is 0
+NOTICE:  fetched_frame is 14
+NOTICE:  RC is 0
+NOTICE:  fetched_frame is 4
+NOTICE:  RC is 0
+NOTICE:  fetched_frame is 3
+NOTICE:  RC is 0
+NOTICE:  fetched_frame is 12
+LINE 1: SELECT test_bufmgr('movies', 11);
+               ^
+NOTICE:  RC is 0
+LINE 1: SELECT test_bufmgr('movies', 11);
+               ^
+NOTICE:  fetched_frame is 13
+LINE 1: SELECT test_bufmgr('movies', 11);
+               ^
+NOTICE:  RC is 0
+LINE 1: SELECT test_bufmgr('movies', 11);
+               ^
+NOTICE:  fetched_frame is 10
+LINE 1: SELECT test_bufmgr('movies', 11);
+               ^
+NOTICE:  RC is 0
+LINE 1: SELECT test_bufmgr('movies', 11);
+               ^
+NOTICE:  fetched_frame is 9
+LINE 1: SELECT test_bufmgr('movies', 11);
+               ^
+NOTICE:  RC is 0
+LINE 1: SELECT test_bufmgr('movies', 11);
+               ^
+NOTICE:  fetched_frame is 7
+LINE 1: SELECT test_bufmgr('movies', 11);
+               ^
+NOTICE:  RC is 0
+LINE 1: SELECT test_bufmgr('movies', 11);
+               ^
+NOTICE:  fetched_frame is 6
+LINE 1: SELECT test_bufmgr('movies', 11);
+               ^
+NOTICE:  RC is 0
+LINE 1: SELECT test_bufmgr('movies', 11);
+               ^
+NOTICE:  fetched_frame is 8
+LINE 1: SELECT test_bufmgr('movies', 11);
+               ^
+NOTICE:  RC is 0
+LINE 1: SELECT test_bufmgr('movies', 11);
+               ^
+NOTICE:  fetched_frame is 5
+LINE 1: SELECT test_bufmgr('movies', 11);
+               ^
+NOTICE:  RC is 0
+LINE 1: SELECT test_bufmgr('movies', 11);
+               ^
+NOTICE:  fetched_frame is 2
+LINE 1: SELECT test_bufmgr('movies', 11);
+               ^
+NOTICE:  RC is 0
+LINE 1: SELECT test_bufmgr('movies', 11);
+               ^
+NOTICE:  fetched_frame is 1
+LINE 1: SELECT test_bufmgr('movies', 11);
+               ^
+NOTICE:  RC is 0
+LINE 1: SELECT test_bufmgr('movies', 11);
+               ^
+NOTICE:  fetched_frame is 14
+NOTICE:  RC is 0
+NOTICE:  fetched_frame is 4
+NOTICE:  RC is 0
+NOTICE:  fetched_frame is 0
+NOTICE:  RC is 0
+NOTICE:  fetched_frame is 15
+NOTICE:  RC is 0
+NOTICE:  testnum is 11
+NOTICE:  fetched_frame is 11
+NOTICE:  RC is 0
+NOTICE:  fetched_frame is 3
+NOTICE:  RC is 0
+NOTICE:  fetched_frame is 12
+NOTICE:  RC is 0
+NOTICE:  fetched_frame is 13
+NOTICE:  RC is 0
+NOTICE:  fetched_frame is 10
+NOTICE:  RC is 0
+NOTICE:  fetched_frame is 9
+NOTICE:  RC is 0
+NOTICE:  fetched_frame is 7
+NOTICE:  RC is 0
+NOTICE:  fetched_frame is 6
+NOTICE:  RC is 0
+NOTICE:  fetched_frame is 5
+NOTICE:  RC is 0
+NOTICE:  fetched_frame is 2
+NOTICE:  RC is 0
+NOTICE:  fetched_frame is 1
+NOTICE:  RC is 0
+NOTICE:  fetched_frame is 8
+NOTICE:  RC is 0
+NOTICE:  test_bufmgr testcase movies 11
+NOTICE:  test_bufmgr read_pin_block blkno 1 bufid 15
+NOTICE:  test_bufmgr read_pin_block blkno 2 bufid 14
+NOTICE:  test_bufmgr read_pin_block blkno 3 bufid 13
+NOTICE:  test_bufmgr read_pin_block blkno 4 bufid 12
+NOTICE:  test_bufmgr read_pin_block blkno 5 bufid 11
+NOTICE:  test_bufmgr read_pin_block blkno 6 bufid 10
+NOTICE:  test_bufmgr read_pin_block blkno 7 bufid 9
+NOTICE:  test_bufmgr read_pin_block blkno 8 bufid 8
+NOTICE:  test_bufmgr read_pin_block blkno 9 bufid 7
+NOTICE:  test_bufmgr read_pin_block blkno 10 bufid 6
+NOTICE:  test_bufmgr read_pin_block blkno 11 bufid 5
+NOTICE:  test_bufmgr read_pin_block blkno 12 bufid 4
+NOTICE:  test_bufmgr read_pin_block blkno 13 bufid 3
+NOTICE:  test_bufmgr read_pin_block blkno 14 bufid 2
+NOTICE:  test_bufmgr read_pin_block blkno 15 bufid 1
+NOTICE:  test_bufmgr read_pin_block blkno 16 bufid 0
+NOTICE:  test_bufmgr read_unpin_block blkno 3 bufid 13
+NOTICE:  test_bufmgr read_pin_block blkno 1 bufid 15
+NOTICE:  test_bufmgr read_unpin_block blkno 2 bufid 14
+NOTICE:  test_bufmgr unpin_block blkno 3 bufid 13
+NOTICE:  fetched_frame is 12
+NOTICE:  RC is 1
+NOTICE:  fetched_frame is 11
+NOTICE:  RC is 1
+NOTICE:  fetched_frame is 10
+NOTICE:  RC is 1
+NOTICE:  fetched_frame is 9
+NOTICE:  RC is 1
+NOTICE:  fetched_frame is 8
+NOTICE:  RC is 1
+NOTICE:  fetched_frame is 7
+NOTICE:  RC is 1
+NOTICE:  fetched_frame is 6
+NOTICE:  RC is 1
+NOTICE:  fetched_frame is 5
+NOTICE:  RC is 1
+NOTICE:  fetched_frame is 4
+NOTICE:  RC is 1
+NOTICE:  fetched_frame is 3
+NOTICE:  RC is 1
+NOTICE:  fetched_frame is 2
+NOTICE:  RC is 1
+NOTICE:  fetched_frame is 1
+NOTICE:  RC is 1
+NOTICE:  fetched_frame is 0
+NOTICE:  RC is 1
+NOTICE:  fetched_frame is 13
+NOTICE:  RC is 0
+NOTICE:  test_bufmgr read_pin_block blkno 17 bufid 13
+WARNING:  buffer refcount leak: [016] (rel=base/73992/73993, blockNum=1, flags=0x83000000, refcount=1 2)
+WARNING:  buffer refcount leak: [014] (rel=base/73992/73993, blockNum=17, flags=0x83000000, refcount=1 1)
+WARNING:  buffer refcount leak: [001] (rel=base/73992/73993, blockNum=16, flags=0x83000000, refcount=1 1)
+WARNING:  buffer refcount leak: [002] (rel=base/73992/73993, blockNum=15, flags=0x83000000, refcount=1 1)
+WARNING:  buffer refcount leak: [003] (rel=base/73992/73993, blockNum=14, flags=0x83000000, refcount=1 1)
+WARNING:  buffer refcount leak: [004] (rel=base/73992/73993, blockNum=13, flags=0x83000000, refcount=1 1)
+WARNING:  buffer refcount leak: [005] (rel=base/73992/73993, blockNum=12, flags=0x83000000, refcount=1 1)
+WARNING:  buffer refcount leak: [006] (rel=base/73992/73993, blockNum=11, flags=0x83000000, refcount=1 1)
+WARNING:  buffer refcount leak: [007] (rel=base/73992/73993, blockNum=10, flags=0x83000000, refcount=1 1)
+WARNING:  buffer refcount leak: [008] (rel=base/73992/73993, blockNum=9, flags=0x83000000, refcount=1 1)
+WARNING:  buffer refcount leak: [009] (rel=base/73992/73993, blockNum=8, flags=0x83000000, refcount=1 1)
+WARNING:  buffer refcount leak: [010] (rel=base/73992/73993, blockNum=7, flags=0x83000000, refcount=1 1)
+WARNING:  buffer refcount leak: [011] (rel=base/73992/73993, blockNum=6, flags=0x83000000, refcount=1 1)
+WARNING:  buffer refcount leak: [012] (rel=base/73992/73993, blockNum=5, flags=0x83000000, refcount=1 1)
+WARNING:  buffer refcount leak: [013] (rel=base/73992/73993, blockNum=4, flags=0x83000000, refcount=1 1)
+WARNING:  buffer refcount leak: [016] (rel=base/73992/73993, blockNum=1, flags=0x83000000, refcount=1 1)
+WARNING:  buffer refcount leak: [015] (rel=base/73992/73993, blockNum=2, flags=0x83000000, refcount=1 1)
