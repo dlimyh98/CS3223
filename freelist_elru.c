@@ -37,7 +37,7 @@ typedef struct node {
 	struct node* prev;
 	struct node* next;
 	int frame_id;
-	uint64_t time_array[2] = {0, 0};
+	uint64_t time_array[2];
 } node;
 
 typedef struct info {
@@ -142,7 +142,7 @@ void move_to_head(node* frame) {
 // If insertion is successful, delete frame from linkedListInfo(original B1 list).
 void insert_into_b2(node* frame) {
 	node* traversal_ptr;
-	node* next_frame;
+	//node* next_frame;
 	node* prev_frame;
 
 	// Update time array for frame
@@ -156,7 +156,7 @@ void insert_into_b2(node* frame) {
 
 		while (traversal_ptr != NULL) {
 			if (traversal_ptr->time_array[SECOND_LAST_ACCESS] < frame->time_array[SECOND_LAST_ACCESS]) {
-				next_frame = traversal_ptr->next;
+				//next_frame = traversal_ptr->next;
 				prev_frame = traversal_ptr->prev;
 
 				if (prev_frame) {
@@ -532,6 +532,8 @@ StrategyAccessBuffer(int buf_id, bool delete)
 			} else{
 				node* new_frame = &doubleLinkedList[buf_id];
 				new_frame->frame_id = buf_id;
+				new_frame->time_array[SECOND_LAST_ACCESS] = 0;
+				new_frame->time_array[FIRST_LAST_ACCESS] = 0;
 				insert_at_head(new_frame);
 			}
 		}
@@ -763,7 +765,7 @@ StrategyGetBuffer(BufferAccessStrategy strategy, uint32 *buf_state, bool *from_r
 					*buf_state = local_buf_state;
 					return buf;
 				}
-				UnlockBufHdr(other_fetched_frame, local_buf_state);
+				UnlockBufHdr(buf, local_buf_state);
 				otherTraversal_frame = otherTraversal_frame -> prev;
 			}
 
@@ -1053,7 +1055,7 @@ StrategyInitialize(bool init)
 	// CS3223: Intialize our OTHER DLL Data Structure
 	if (!is_other_dll_success && !is_other_link_list_info_success) { //Initiate our Double Link List Data Structure here for B2
 		Assert (init);
-		SpinLockInit(&otherLinkedListInfo->LinkedListInfo_spinlock);
+		SpinLockInit(&otherLinkedListInfo->linkedListInfo_spinlock);
 
 		otherLinkedListInfo->tail = NULL;
 		otherLinkedListInfo->size = 0;
