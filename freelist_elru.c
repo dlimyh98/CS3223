@@ -115,6 +115,8 @@ void insert_at_head(node* frame) {
 	// Update time_array
 	update_time(frame);
 
+	elog(LOG, "Inserting frame %d into B1", frame->frame_id);
+
 	frame->next = linkedListInfo->head; 
 	if (linkedListInfo->head != NULL) { // Check if list is not empty
 		linkedListInfo->head->prev = frame; 
@@ -141,6 +143,9 @@ void move_to_head(node* frame) {
 // The frame with the highest rank (largest time_array[SECOND_LAST_ACCESS]) will be at the head of the list.
 // If insertion is successful, delete frame from linkedListInfo(original B1 list).
 void insert_into_b2(node* frame) {
+	elog(LOG, "Inserting frame %d into B2", frame->frame_id);
+	elog(LOG, "Second last access time of frame %d: %lu", frame->frame_id, frame->time_array[SECOND_LAST_ACCESS]);
+	elog(LOG, "First last access time of frame %d: %lu", frame->frame_id, frame->time_array[FIRST_LAST_ACCESS]);
 	node* traversal_ptr;
 	//node* next_frame;
 	node* prev_frame;
@@ -148,11 +153,14 @@ void insert_into_b2(node* frame) {
 	// Update time array for frame
 	update_time(frame);
 
-	if (otherLinkedListInfo->head == NULL) { // If B2 is empty
+	if (otherLinkedListInfo->tail == NULL) { // If B2 is empty
+		elog(LOG, "B2 is empty");
 		otherLinkedListInfo->head = otherLinkedListInfo->tail = frame;
 		frame->prev = frame->next = NULL;
 	} else {
+		elog(LOG, "B2 is not empty");
 		traversal_ptr = otherLinkedListInfo->head;
+		elog(LOG, "Access time and frame_id of traversal_ptr: %lu, %d", traversal_ptr->time_array[SECOND_LAST_ACCESS], traversal_ptr->frame_id);
 
 		while (traversal_ptr != NULL) {
 			if (traversal_ptr->time_array[SECOND_LAST_ACCESS] < frame->time_array[SECOND_LAST_ACCESS]) {
@@ -165,6 +173,8 @@ void insert_into_b2(node* frame) {
 					otherLinkedListInfo->head = frame;
 				}
 
+				elog(LOG, "Inserting frame %d into B2 at position %d", frame->frame_id, traversal_ptr->frame_id);
+
 				frame->prev = prev_frame;
 				frame->next = traversal_ptr;
 				traversal_ptr->prev = frame;
@@ -176,6 +186,9 @@ void insert_into_b2(node* frame) {
 		}
 
 		// If frame has the lowest rank, insert at the end
+
+		elog(LOG, "Inserting frame %d into B2 at the end", frame->frame_id);
+		
 		otherLinkedListInfo->tail->next = frame;
 		frame->prev = otherLinkedListInfo->tail;
 		frame->next = NULL;
@@ -253,11 +266,14 @@ node* search_for_frame_b2(int desired_frame_id) {
 
 // Update time array depending if first or accessed again
 void update_time(node* frame) {
+	elog(LOG, "Updating time for frame %d, with counter: %lu, frame first last access time: %lu, frame second last access time: %lu", frame->frame_id, counter, frame->time_array[FIRST_LAST_ACCESS], frame->time_array[SECOND_LAST_ACCESS]);
 	bool not_first_update;
 	//If both array values are zero then it is the first time the frame is being accessed
-	if (frame->time_array[SECOND_LAST_ACCESS] == 0 && frame->time_array[FIRST_LAST_ACCESS] == 0) {
+	if (frame->time_array[SECOND_LAST_ACCESS] == 0) {
+		elog(LOG, "Second last access time is 0");
 		not_first_update = false;
 	} else {
+		elog(LOG, "Second last access time is not 0");
 		not_first_update = true;
 	}
 	if (not_first_update) {
@@ -495,6 +511,8 @@ have_free_buffer(void)
 void
 StrategyAccessBuffer(int buf_id, bool delete)
 {
+	counter++;
+	elog(LOG, "Incremented Counter at StrategyAccessBuffer to: %lu", counter);
 	node* frame;
 	if (delete) {
         SpinLockAcquire(&linkedListInfo->linkedListInfo_spinlock);
@@ -533,7 +551,7 @@ StrategyAccessBuffer(int buf_id, bool delete)
 				node* new_frame = &doubleLinkedList[buf_id];
 				new_frame->frame_id = buf_id;
 				new_frame->time_array[SECOND_LAST_ACCESS] = 0;
-				new_frame->time_array[FIRST_LAST_ACCESS] = 0;
+				new_frame->time_array[FIRST_LAST_ACCESS] = counter;
 				insert_at_head(new_frame);
 			}
 		}
@@ -560,6 +578,8 @@ StrategyAccessBuffer(int buf_id, bool delete)
 BufferDesc *
 StrategyGetBuffer(BufferAccessStrategy strategy, uint32 *buf_state, bool *from_ring)
 {
+	counter++;
+	elog(LOG, "Incremented Counter at StrategyGetBuffer to: %lu", counter);
 	BufferDesc *buf;
 	int			bgwprocno;
 	int			trycounter;
