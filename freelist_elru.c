@@ -26,6 +26,8 @@
 #include <assert.h>
 
 #define INT_ACCESS_ONCE(var)	((int)(*((volatile int *)&(var))))
+#define SECOND_LAST_ACCESS 0
+#define FIRST_LAST_ACCESS 1
 
 /*********************************************/
 // CS3223 - Data Structure declarations
@@ -53,6 +55,13 @@ node* search_for_frame(int desired_frame_id);
 void delete_arbitrarily(int frame_id_for_deletion);
 void insert_at_head(node* frame);
 void move_to_head(node* frame);       // Case 1 - Called by StrategyAccessBuffer(..., false) in bufmgr_lru.c
+
+//Pre-declare functions
+void insert_into_b2(node* frame);
+void move_to_head_b2(node* frame);
+void delete_other_arbitrarily(int frame_id_for_deletion);
+node* search_for_frame_b2(int desired_frame_id);
+void update_time(node* frame);
 
 /*********************************************/
 // CS3223 - Function definitions
@@ -103,6 +112,9 @@ void delete_arbitrarily(int frame_id_for_deletion) {
 }
 
 void insert_at_head(node* frame) { 
+	// Update time_array
+	update_time(frame);
+
 	frame->next = linkedListInfo->head; 
 	if (linkedListInfo->head != NULL) { // Check if list is not empty
 		linkedListInfo->head->prev = frame; 
@@ -120,6 +132,142 @@ void move_to_head(node* frame) {
 	delete_arbitrarily(frame->frame_id);
 	insert_at_head(frame); 
 }
+
+// B2 - Function definitions
+
+// Rank in B2(otherLinkedListInfo) is based on 2nd last accessed time i.e time_array[SECOND_LAST_ACCESS]
+// Traverse through otherLinkedListInfo and check rank of frame corresponding by comparing time_array[SECOND_LAST_ACCESS]
+// of other frames with the time_array[SECOND_LAST_ACCESS] of the frame to be inserted, and insert the frame at the correct position.
+// The frame with the highest rank (largest time_array[SECOND_LAST_ACCESS]) will be at the head of the list.
+// If insertion is successful, delete frame from linkedListInfo(original B1 list).
+void insert_into_b2(node* frame) {
+	node* traversal_ptr;
+	node* next_frame;
+	node* prev_frame;
+
+	// Update time array for frame
+	update_time(frame);
+
+	if (otherLinkedListInfo->head == NULL) { // If B2 is empty
+		otherLinkedListInfo->head = otherLinkedListInfo->tail = frame;
+		frame->prev = frame->next = NULL;
+	} else {
+		traversal_ptr = otherLinkedListInfo->head;
+
+		while (traversal_ptr != NULL) {
+			if (traversal_ptr->time_array[SECOND_LAST_ACCESS] < frame->time_array[SECOND_LAST_ACCESS]) {
+				next_frame = traversal_ptr->next;
+				prev_frame = traversal_ptr->prev;
+
+				if (prev_frame) {
+					prev_frame->next = frame;
+				} else {
+					otherLinkedListInfo->head = frame;
+				}
+
+				frame->prev = prev_frame;
+				frame->next = traversal_ptr;
+				traversal_ptr->prev = frame;
+
+				return;
+			}
+
+			traversal_ptr = traversal_ptr->next;
+		}
+
+		// If frame has the lowest rank, insert at the end
+		otherLinkedListInfo->tail->next = frame;
+		frame->prev = otherLinkedListInfo->tail;
+		frame->next = NULL;
+		otherLinkedListInfo->tail = frame;
+	}
+
+	delete_arbitrarily(frame->frame_id);
+
+}
+
+//Moves a frame in otherLinkedListInfo to the head of the list
+void move_to_head_b2(node* frame) {
+	if (frame == otherLinkedListInfo->head) {
+		return;
+	}
+
+	if (frame == otherLinkedListInfo->tail) {
+		otherLinkedListInfo->tail = frame->prev;
+		otherLinkedListInfo->tail->next = NULL;
+	} else {
+		frame->prev->next = frame->next;
+		frame->next->prev = frame->prev;
+	}
+
+	frame->next = otherLinkedListInfo->head;
+	frame->prev = NULL;
+	otherLinkedListInfo->head->prev = frame;
+	otherLinkedListInfo->head = frame;
+}
+
+void delete_other_arbitrarily(int frame_id_for_deletion) {
+	node* frame_for_deletion = search_for_frame(frame_id_for_deletion);
+
+	if (!frame_for_deletion) { // Handle case where frame is not found
+		return;
+	}
+
+	if (frame_for_deletion == otherLinkedListInfo->head) { // Correctly check and update head
+		if (otherLinkedListInfo->head->next) { // Check if there's a next node
+			otherLinkedListInfo->head = otherLinkedListInfo->head->next;
+			otherLinkedListInfo->head->prev = NULL;
+		} else { // List becomes empty
+			otherLinkedListInfo->head = otherLinkedListInfo->tail = NULL;
+		}
+		} else if (frame_for_deletion == otherLinkedListInfo->tail) { // Correctly check and update tail
+			otherLinkedListInfo->tail = otherLinkedListInfo->tail->prev;
+			otherLinkedListInfo->tail->next = NULL;
+		} else { // Node is in the middle
+			frame_for_deletion->prev->next = frame_for_deletion->next;
+			frame_for_deletion->next->prev = frame_for_deletion->prev;
+	}
+}
+
+// Search for frame in B2
+node* search_for_frame_b2(int desired_frame_id) {
+	node* traversal_ptr;
+
+	if (otherLinkedListInfo->head == NULL) { 
+		//elog(ERROR, "otherLinkedListInfo is empty");
+		return NULL; // Handle empty list case properly
+	} else {
+		traversal_ptr = otherLinkedListInfo->head;
+
+		while (traversal_ptr != NULL) {
+			if (traversal_ptr->frame_id == desired_frame_id) {
+				return traversal_ptr;
+			}
+
+			traversal_ptr = traversal_ptr->next;
+		}
+	}
+
+	return NULL; // Return NULL if frame_id not found
+}
+
+// Update time array depending if first or accessed again
+void update_time(node* frame) {
+	bool not_first_update;
+	//If both array values are zero then it is the first time the frame is being accessed
+	if (frame->time_array[SECOND_LAST_ACCESS] == 0 && frame->time_array[FIRST_LAST_ACCESS] == 0) {
+		not_first_update = false;
+	} else {
+		not_first_update = true;
+	}
+	if (not_first_update) {
+		frame->time_array[SECOND_LAST_ACCESS] = frame->time_array[FIRST_LAST_ACCESS];
+		frame->time_array[FIRST_LAST_ACCESS] = counter;
+	} else {
+		frame->time_array[FIRST_LAST_ACCESS] = counter;
+	}
+}
+
 
 char* print_list_to_string(info* linkedListInfo) {
     // Initial allocation for the string
@@ -358,21 +506,38 @@ StrategyAccessBuffer(int buf_id, bool delete)
         SpinLockRelease(&linkedListInfo->linkedListInfo_spinlock);
 		//elog(LOG, "SpinRELEASE A");
 		//log_linked_list(linkedListInfo);
+
+		// B2, did not exist in B1 so we have to delete from B2 now
+		SpinLockAcquire(&otherLinkedListInfo->linkedListInfo_spinlock);
+
+		delete_other_arbitrarily(buf_id);
+
+		SpinLockRelease(&otherLinkedListInfo->linkedListInfo_spinlock);
     } else {
 		SpinLockAcquire(&linkedListInfo->linkedListInfo_spinlock);
+		SpinLockAcquire(&otherLinkedListInfo->linkedListInfo_spinlock);
 		//elog(LOG, "SpinLOCK B");
 		//log_linked_list(linkedListInfo);
-		frame = search_for_frame(buf_id);
 
-		if (frame) {
-			move_to_head(frame);
+		//Search for frame in B1
+		frame = search_for_frame(buf_id);
+		if (frame) {			
+			insert_into_b2(frame);			
 		} else {
-			node* new_frame = &doubleLinkedList[buf_id];
-			new_frame->frame_id = buf_id;
-			insert_at_head(new_frame);
+			// Frame does not exist in B1, so we have to search for it in B2
+			frame = search_for_frame_b2(buf_id);
+
+			if (frame) {
+				move_to_head_b2(frame);
+			} else{
+				node* new_frame = &doubleLinkedList[buf_id];
+				new_frame->frame_id = buf_id;
+				insert_at_head(new_frame);
+			}
 		}
 
 		SpinLockRelease(&linkedListInfo->linkedListInfo_spinlock);
+		SpinLockRelease(&otherLinkedListInfo->linkedListInfo_spinlock);
 		//elog(LOG, "SpinRELEASE B");
 		//log_linked_list(linkedListInfo);
 	}
@@ -402,6 +567,11 @@ StrategyGetBuffer(BufferAccessStrategy strategy, uint32 *buf_state, bool *from_r
 	node* traversal_frame;
 	int fetched_frame_id;
 	node *fetched_frame;
+
+	// B2
+	node* otherTraversal_frame;
+	int other_frame_id;
+	node *other_fetched_frame;
 
 	*from_ring = false;
 
@@ -556,7 +726,47 @@ StrategyGetBuffer(BufferAccessStrategy strategy, uint32 *buf_state, bool *from_r
 			// We follow their method there
 			traversal_frame = linkedListInfo->tail;				          // Reset traversal to the tail
 			SpinLockRelease(&linkedListInfo->linkedListInfo_spinlock);    // Release the DLL spinlock we acquired before for(;;)
-			elog(ERROR, "no unpinned buffers available");                 // Throw an error (and exit)
+			
+			//This is the case where B1 is empty (Original linked list is empty or has no unpinned frames)
+			//So we have to scan through B2 now to find and unpinned frame to evict
+			SpinLockAcquire(&otherLinkedListInfo->linkedListInfo_spinlock);
+
+			otherTraversal_frame = otherLinkedListInfo->tail;
+			for (;;)
+			{
+				if (otherTraversal_frame == NULL) {
+					// We must have traversed the entire list, or the list is empty
+					// i.e All buffers are pinned
+
+					// Thus, the result should be similar to Clock Policy (where all frames are pinned, none can be evicted)
+					// We follow their method there
+					otherTraversal_frame = otherLinkedListInfo->tail;				          // Reset traversal to the tail
+					SpinLockRelease(&otherLinkedListInfo->linkedListInfo_spinlock);    // Release the DLL spinlock we acquired before for(;;)
+					elog(ERROR, "no unpinned buffers available");
+				}
+
+				other_frame_id = otherTraversal_frame->frame_id;				
+				buf = GetBufferDescriptor(other_frame_id);
+				local_buf_state = LockBufHdr(buf);
+
+				if (BUF_STATE_GET_REFCOUNT(local_buf_state) == 0)
+				{
+					// Found a usable buffer
+					// AddBufferToRing(strategy, other_fetched_frame);
+					//elog(LOG, "SpinRELEASE Case 3 else");
+					//log_linked_list(linkedListInfo);
+
+					other_fetched_frame = search_for_frame_b2(other_frame_id);
+					move_to_head_b2(other_fetched_frame);
+					SpinLockRelease(&otherLinkedListInfo->linkedListInfo_spinlock);
+
+					*buf_state = local_buf_state;
+					return buf;
+				}
+				UnlockBufHdr(other_fetched_frame, local_buf_state);
+				otherTraversal_frame = otherTraversal_frame -> prev;
+			}
+
 		}
 
 		fetched_frame_id = traversal_frame->frame_id;
@@ -578,9 +788,9 @@ StrategyGetBuffer(BufferAccessStrategy strategy, uint32 *buf_state, bool *from_r
 			// else
 			//{
 				/* Found a usable buffer */
-				if (strategy != NULL) {
-					//elog(LOG, "Non-default strategy found a buffer");
-				}
+				// if (strategy != NULL) {
+				// 	elog(LOG, "Non-default strategy found a buffer");
+				// }
 				// AddBufferToRing(strategy, buf);
 
 			fetched_frame = search_for_frame(fetched_frame_id);
