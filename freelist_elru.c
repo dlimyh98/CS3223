@@ -42,6 +42,7 @@ typedef struct node {
 	int frame_id;
 	uint64_t time_array[2];
 	int sanity_check;
+	int list_id;
 } node;
 
 typedef struct info {
@@ -95,6 +96,7 @@ node* search_for_frame(int desired_frame_id) {
 
 void delete_arbitrarily(int frame_id_for_deletion) {
 	elog(LOG, "Deleting frame %d from B1", frame_id_for_deletion);
+	log_linked_list(linkedListInfo);
  	node* frame_for_deletion = search_for_frame(frame_id_for_deletion);
 
 	if (!frame_for_deletion) { // Handle case where frame is not found
@@ -119,19 +121,25 @@ void delete_arbitrarily(int frame_id_for_deletion) {
 	}	
 
 	if (frame_for_deletion == linkedListInfo->head) { // Correctly check and update head
+		elog(LOG, "if (frame_for_deletion == linkedListInfo->head) triggered");
 		if (linkedListInfo->head->next) { // Check if there's a next node
 			linkedListInfo->head = linkedListInfo->head->next;
 			linkedListInfo->head->prev = NULL;
-		} else { // List becomes empty
+			} 
+		else { // List becomes empty
 			linkedListInfo->head = linkedListInfo->tail = NULL;
-		}
-		} else if (frame_for_deletion == linkedListInfo->tail) { // Correctly check and update tail
+			}
+		} 
+	else if (frame_for_deletion == linkedListInfo->tail) { // Correctly check and update tail
+			elog(LOG, "if (frame_for_deletion == linkedListInfo->tail) triggered");
 			linkedListInfo->tail = linkedListInfo->tail->prev;
 			linkedListInfo->tail->next = NULL;
-		} else { // Node is in the middle
+		} 
+	else { // Node is in the middle
+			elog(LOG, "else triggered");
 			frame_for_deletion->prev->next = frame_for_deletion->next;
 			frame_for_deletion->next->prev = frame_for_deletion->prev;
-	}
+		}
 	elog(LOG, "Successfully deleted frame %d from B1", frame_id_for_deletion);
 }
 
@@ -142,13 +150,20 @@ void insert_at_head(node* frame) {
 	elog(LOG, "Inserting frame %d into B1", frame->frame_id);
 
 	frame->next = linkedListInfo->head; 
-	if (linkedListInfo->head != NULL) { // Check if list is not empty
+	if (linkedListInfo->head != NULL && linkedListInfo->tail != NULL) { // Check if list is not empty
+		elog(LOG, "Head of B1: %d", linkedListInfo->head->frame_id);
+		// just log sanity check value
+		elog(LOG, "Sanity check value of head of B1: %d", linkedListInfo->head->sanity_check);
+
 		linkedListInfo->head->prev = frame; 
 	}
+
 	linkedListInfo->head = frame; 
 
 	if (linkedListInfo->tail == NULL) { // If list was empty, update tail as well
+		elog(LOG, "Tail of B1: NULL");
 		linkedListInfo->tail = frame;
+		frame->next = NULL;
 	}
 
 	frame->prev = NULL; // Set frame's prev to NULL
@@ -179,6 +194,7 @@ void insert_into_b2(node* frame) {
 
 	// delete frame from B2 if it exists first, then insert into B2 at the correct position
 	delete_other_arbitrarily(frame->frame_id);
+	delete_arbitrarily(frame->frame_id);
 
 	if (otherLinkedListInfo->tail == NULL) { // If B2 is empty
 		elog(LOG, "B2 is empty");
@@ -223,9 +239,6 @@ void insert_into_b2(node* frame) {
 
 		elog(LOG, "Successfully inserted frame %d into B2 at the end", frame->frame_id);
 	}
-
-	delete_arbitrarily(frame->frame_id);
-
 }
 
 //Moves a frame in otherLinkedListInfo to the head of the list
@@ -335,7 +348,9 @@ char* print_list_to_string(info* linkedListInfo) {
     node* current = linkedListInfo->head;
     int offset = 0; // Keep track of the number of characters written
 
-    while (current != NULL) {
+	int debug_limit = 0;
+
+    while (current != NULL && debug_limit < 100 && current->frame_id != -1) {
         // Check remaining buffer size and reallocate if necessary
         if (str_size - offset < 50) { // Ensure there's at least 50 chars of space
             str_size *= 2; // Double the buffer size
@@ -357,6 +372,7 @@ char* print_list_to_string(info* linkedListInfo) {
         }
 
         current = current->next;
+		debug_limit++;
     }
 
     // Optionally, remove the last arrow " -> " for aesthetics
@@ -383,7 +399,7 @@ void log_b2_linked_list(info* linkedListInfo) {
 		elog(LOG, "B2 LinkedList: %s", list_representation);
 		free(list_representation);
 	} else {
-		elog(ERROR, "Failed to allocate memory for list representation");
+		elog(ERROR, "Failed to allocate memory for b2 list representation");
 	}
 }
 
@@ -600,13 +616,15 @@ StrategyAccessBuffer(int buf_id, bool delete)
 			frame = search_for_frame_b2(buf_id);
 
 			if (frame) {
-				insert_at_head(frame);
+				elog(LOG, "Inserting frame %d into B2 again(to put it at new postion) from StrategyAccessBuffer if statement", frame->frame_id);
+				insert_into_b2(frame);
 			} else{
 				node* new_frame = &doubleLinkedList[buf_id];
 				new_frame->frame_id = buf_id;
 				new_frame->time_array[SECOND_LAST_ACCESS] = 0;
 				new_frame->time_array[FIRST_LAST_ACCESS] = 0;
 				new_frame->sanity_check = 42069;
+				elog(LOG, "Inserting frame %d into B1 from StrategyAccessBuffer else statement", new_frame->frame_id);
 				insert_at_head(new_frame);
 			}
 		}
@@ -845,7 +863,9 @@ StrategyGetBuffer(BufferAccessStrategy strategy, uint32 *buf_state, bool *from_r
 					log_b2_linked_list(otherLinkedListInfo);
 
 					other_fetched_frame = search_for_frame_b2(other_frame_id);
-					insert_at_head(other_fetched_frame);
+					//log insert at head called from strategygetbuffer
+					elog(LOG, "Inserting frame %d into B2 (again at new position) from strategygetbuffer", other_fetched_frame->frame_id);
+					insert_into_b2(other_fetched_frame);
 					SpinLockRelease(&otherLinkedListInfo->linkedListInfo_spinlock);
 
 					*buf_state = local_buf_state;
@@ -861,8 +881,8 @@ StrategyGetBuffer(BufferAccessStrategy strategy, uint32 *buf_state, bool *from_r
 		buf = GetBufferDescriptor(fetched_frame_id);
 		local_buf_state = LockBufHdr(buf);
 
-		elog(NOTICE, "fetched_frame is %d", fetched_frame_id);
-		elog(NOTICE, "RC is %d", BUF_STATE_GET_REFCOUNT(local_buf_state));
+		//elog(NOTICE, "fetched_frame is %d", fetched_frame_id);
+		//elog(NOTICE, "RC is %d", BUF_STATE_GET_REFCOUNT(local_buf_state));
 
 		// Check if the frame_id will be valid below...
 		if (BUF_STATE_GET_REFCOUNT(local_buf_state) == 0)
@@ -1148,6 +1168,25 @@ StrategyInitialize(bool init)
 		linkedListInfo->tail = NULL;
 		linkedListInfo->size = 0;
 		linkedListInfo->head = doubleLinkedList;
+		//log what is MBiffers and what is NUM_BUFFER_PARTITIONS
+		elog(LOG, "NBuffers: %d and NUM_BUFFER_PARTITIONS: %d", NBuffers, NUM_BUFFER_PARTITIONS);
+
+		// We used NBuffers + NUM_BUFFER_PARTITIONS in the original size of the doubleLinkedList
+		for (int i = 0; i < (NBuffers + NUM_BUFFER_PARTITIONS); i++) {
+			doubleLinkedList[i].prev = NULL;
+			doubleLinkedList[i].next = NULL;
+			doubleLinkedList[i].frame_id = -1;
+			doubleLinkedList[i].time_array[0] = 0;
+			doubleLinkedList[i].time_array[1] = 0;
+			doubleLinkedList[i].sanity_check = 12345;
+			doubleLinkedList[i].list_id = 1;
+    	}
+
+		//Check freshly initialized linked list linkedListInfo->head frame id
+		elog(LOG, "freshly initialized linkedListInfo->head frame id: %d", linkedListInfo->head->frame_id);
+		//compare with doubleLinkedList[0] head frame id
+		elog(LOG, "doubleLinkedList[0] head frame id: %d", doubleLinkedList[0].frame_id);
+
 	} else
 		Assert(!init);
 
@@ -1159,6 +1198,16 @@ StrategyInitialize(bool init)
 		otherLinkedListInfo->tail = NULL;
 		otherLinkedListInfo->size = 0;
 		otherLinkedListInfo->head = otherDoubleLinkedList;
+		for (int i = 0; i < (NBuffers + NUM_BUFFER_PARTITIONS); i++) {
+			otherDoubleLinkedList[i].prev = NULL;
+			otherDoubleLinkedList[i].next = NULL;
+			otherDoubleLinkedList[i].frame_id = -1;
+			otherDoubleLinkedList[i].time_array[0] = 0;
+			otherDoubleLinkedList[i].time_array[1] = 0;
+			otherDoubleLinkedList[i].sanity_check = 42069;
+			otherDoubleLinkedList[i].list_id = 2;
+		}
+
 	} else
 		Assert(!init);
 	
