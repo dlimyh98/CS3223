@@ -588,6 +588,11 @@ StrategyAccessBuffer(int buf_id, bool delete)
 		log_b2_linked_list(otherLinkedListInfo);
 
         delete_arbitrarily(buf_id);
+		doubleLinkedList[buf_id].frame_id = -1;
+		doubleLinkedList[buf_id].time_array[0] = 0;
+		doubleLinkedList[buf_id].time_array[1] = 0;
+		doubleLinkedList[buf_id].sanity_check = 42069;
+		doubleLinkedList[buf_id].list_id = 1;
 
         SpinLockRelease(&linkedListInfo->linkedListInfo_spinlock);
 		//elog(LOG, "SpinRELEASE A");
@@ -598,6 +603,11 @@ StrategyAccessBuffer(int buf_id, bool delete)
 		SpinLockAcquire(&otherLinkedListInfo->linkedListInfo_spinlock);
 
 		delete_other_arbitrarily(buf_id);
+		otherDoubleLinkedList[buf_id].frame_id = -1;
+		otherDoubleLinkedList[buf_id].time_array[0] = 0;
+		otherDoubleLinkedList[buf_id].time_array[1] = 0;
+		otherDoubleLinkedList[buf_id].sanity_check = 42069;
+		otherDoubleLinkedList[buf_id].list_id = 2;
 
 		SpinLockRelease(&otherLinkedListInfo->linkedListInfo_spinlock);
     } else {

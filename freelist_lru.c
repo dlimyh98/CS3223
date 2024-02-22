@@ -558,8 +558,8 @@ StrategyGetBuffer(BufferAccessStrategy strategy, uint32 *buf_state, bool *from_r
 		buf = GetBufferDescriptor(fetched_frame_id);
 		local_buf_state = LockBufHdr(buf);
 
-		elog(NOTICE, "fetched_frame is %d", fetched_frame_id);
-		elog(NOTICE, "RC is %d", BUF_STATE_GET_REFCOUNT(local_buf_state));
+		//elog(NOTICE, "fetched_frame is %d", fetched_frame_id);
+		//elog(NOTICE, "RC is %d", BUF_STATE_GET_REFCOUNT(local_buf_state));
 
 		// Check if the frame_id will be valid below...
 		if (BUF_STATE_GET_REFCOUNT(local_buf_state) == 0)
