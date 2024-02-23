@@ -333,17 +333,18 @@ void delete_other_arbitrarily(int frame_id_for_deletion) {
 			//elog(LOG, "New Prev frame of frame %d: NULL, New Next frame of frame %d: NULL", frame_id_for_deletion, frame_id_for_deletion);
 		}
 
-		if (otherLinkedListInfo->head != NULL)
-			//elog(LOG, "Head of B2: %d", otherLinkedListInfo->head->frame_id);
-		if (linkedListInfo->head != NULL)
-			//elog(LOG, "Head of B1: %d", linkedListInfo->head->frame_id);
-		// only log tail if it exists
-		if (otherLinkedListInfo->tail != NULL)
-			//elog(LOG, "Tail of B2: %d", otherLinkedListInfo->tail->frame_id);
-		if (linkedListInfo->tail != NULL)
-			//elog(LOG, "Tail of B1: %d", linkedListInfo->tail->frame_id);
+		// if (otherLinkedListInfo->head != NULL)
+		// 	//elog(LOG, "Head of B2: %d", otherLinkedListInfo->head->frame_id);
+		// if (linkedListInfo->head != NULL)
+		// 	//elog(LOG, "Head of B1: %d", linkedListInfo->head->frame_id);
+		// // only log tail if it exists
+		// if (otherLinkedListInfo->tail != NULL)
+		// 	//elog(LOG, "Tail of B2: %d", otherLinkedListInfo->tail->frame_id);
+		// if (linkedListInfo->tail != NULL)
+		// 	//elog(LOG, "Tail of B1: %d", linkedListInfo->tail->frame_id);
 
-		log_linked_list(linkedListInfo);
+		// elog(LOG, "I love CS3223!");	
+		//log_linked_list(linkedListInfo);
 		//log_linked_list_backwards(linkedListInfo);
 		//log_b2_linked_list(otherLinkedListInfo);
 		//log_b2_linked_list_backwards(otherLinkedListInfo);	
